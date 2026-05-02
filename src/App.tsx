@@ -1,122 +1,112 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from "react"
+import { Input } from "./components/ui/input"
+import { Label } from "./components/ui/label"
+import { Button } from "./components/ui/button"
+import { Slider } from "./components/ui/slider";
 
 function App() {
-  const [count, setCount] = useState(0)
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+  const [input_img, setInput_img] = useState<File | null>(null);
+  const [output_img, setOutput_img] = useState<string>("");
+  const [value, setValue] = useState(0.2)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setInput_img(file);
+  };
+
+  const handeleSubmit = () => {
+    if (!input_img) return;
+
+    const img = new Image();
+    img.src = input_img ? URL.createObjectURL(input_img) : '';
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const pixelScale = value; // 🔥 lower = more pixelated
+
+      // Step 1: shrink image
+      const smallW = img.width * pixelScale;
+      const smallH = img.height * pixelScale;
+
+      canvas.width = smallW;
+      canvas.height = smallH;
+
+      ctx.drawImage(img, 0, 0, smallW, smallH);
+
+      // Step 2: scale back up WITHOUT smoothing
+      const finalCanvas = document.createElement("canvas");
+      const fctx = finalCanvas.getContext("2d");
+      if (!fctx) return;
+
+      finalCanvas.width = img.width;
+      finalCanvas.height = img.height;
+
+      fctx.imageSmoothingEnabled = false; // 🔥 THIS IS THE MAGIC
+
+      fctx.drawImage(canvas, 0, 0, finalCanvas.width, finalCanvas.height);
+
+      // Optional: also compress
+      const result = finalCanvas.toDataURL("image/jpeg", 0.7);
+
+      setOutput_img(result);
+    };
+  };
+
+  const handleDownload = () => {
+    if (!output_img) return;
+    
+    const link = document.createElement("a");
+    link.href = output_img;
+    const timestamp = new Date().getTime();
+    link.download = `5arabha-${timestamp}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+    return (
+        <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="bg-card/80 backdrop-blur border border-border rounded-2xl p-10 shadow-xl">
+          <h1 className="text-3xl font-semibold mb-6 text-center">
+            خربها
+          </h1>
+
+            <div className="grid w-full max-w-sm items-center gap-1.5">
+              <Label htmlFor="picture">Picture</Label>
+              <Input id="picture" type="file" onChange={handleFileChange} />
+
+              <div className="flex items-center justify-between gap-2 mt-6">
+                <Label htmlFor="slider-demo-temperature">Curse lvl</Label>
+                <span className="text-sm text-muted-foreground">
+                  {value.toFixed(2)}
+                </span>
+              </div>
+
+              <Slider
+                defaultValue={[0.2]}
+                max={0.5}
+                min={0.05}
+                step={0.1}
+                value={[value]}
+                onValueChange={([newValue]) => setValue(newValue)}
+                className="mx-auto w-full max-w-xs"
+              />
+              <Button onClick={handeleSubmit} className="mt-4">Curse it</Button>
+            </div>
+            <div className="mt-6 flex align-center justify-center gap-2.5">
+              <img src={input_img ? URL.createObjectURL(input_img) : ''} alt="" className="rounded-md w-26 h-26 object-cover" />
+              <img src={output_img} alt="" className="rounded-md w-26 h-26 object-cover" />
+            </div>
+            <Button onClick={handleDownload} className="mt-4 w-full">Download</Button>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      </div>
+    )
+    
+  }
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
-}
-
-export default App
+  export default App
