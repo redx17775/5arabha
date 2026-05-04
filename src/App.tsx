@@ -3,12 +3,14 @@ import { Input } from "./components/ui/input"
 import { Label } from "./components/ui/label"
 import { Button } from "./components/ui/button"
 import { Slider } from "./components/ui/slider";
+import { Switch } from "./components/ui/switch";
 
 function App() {
 
   const [input_img, setInput_img] = useState<File | null>(null);
   const [output_img, setOutput_img] = useState<string>("");
   const [value, setValue] = useState(0.2)
+  const [smooth, setSmooth] = useState(false)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -16,46 +18,68 @@ function App() {
     setInput_img(file);
   };
 
-  const handeleSubmit = () => {
-    if (!input_img) return;
+const handeleSubmit = () => {
+  if (!input_img) return;
 
-    const img = new Image();
-    img.src = input_img ? URL.createObjectURL(input_img) : '';
+  const img = new Image();
+  img.src = URL.createObjectURL(input_img);
 
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+  img.onload = () => {
+    // ===== Step 1: Pixelate (shrink) =====
+    const tempCanvas = document.createElement("canvas");
+    const tctx = tempCanvas.getContext("2d");
+    if (!tctx) return;
 
-      const pixelScale = value; // 🔥 lower = more pixelated
+    const pixelScale = value;
 
-      // Step 1: shrink image
-      const smallW = img.width * pixelScale;
-      const smallH = img.height * pixelScale;
+    const smallW = img.width * pixelScale;
+    const smallH = img.height * pixelScale;
 
-      canvas.width = smallW;
-      canvas.height = smallH;
+    tempCanvas.width = smallW;
+    tempCanvas.height = smallH;
 
-      ctx.drawImage(img, 0, 0, smallW, smallH);
+    tctx.drawImage(img, 0, 0, smallW, smallH);
 
-      // Step 2: scale back up WITHOUT smoothing
-      const finalCanvas = document.createElement("canvas");
-      const fctx = finalCanvas.getContext("2d");
-      if (!fctx) return;
+    // ===== Step 2: Scale up (pixel blocks) =====
+    const pixelCanvas = document.createElement("canvas");
+    const pctx = pixelCanvas.getContext("2d");
+    if (!pctx) return;
 
-      finalCanvas.width = img.width;
-      finalCanvas.height = img.height;
+    pixelCanvas.width = img.width;
+    pixelCanvas.height = img.height;
 
-      fctx.imageSmoothingEnabled = false; // 🔥 THIS IS THE MAGIC
+    pctx.imageSmoothingEnabled = false;
+    pctx.drawImage(tempCanvas, 0, 0, pixelCanvas.width, pixelCanvas.height);
 
-      fctx.drawImage(canvas, 0, 0, finalCanvas.width, finalCanvas.height);
+    let finalCanvas = pixelCanvas;
 
-      // Optional: also compress
-      const result = finalCanvas.toDataURL("image/jpeg", 0.7);
+    // ===== Step 3: OPTIONAL smoothing =====
+    if (smooth) {
+      const smoothCanvas = document.createElement("canvas");
+      const sctx = smoothCanvas.getContext("2d");
+      if (!sctx) return;
 
-      setOutput_img(result);
-    };
+      smoothCanvas.width = img.width;
+      smoothCanvas.height = img.height;
+
+      sctx.imageSmoothingEnabled = true;
+      sctx.imageSmoothingQuality = "high";
+
+      // auto blur based on pixelation
+      const blurValue = Math.max(1, (1 / pixelScale) * 0.5);
+
+      sctx.filter = `blur(${blurValue}px)`;
+      sctx.drawImage(pixelCanvas, 0, 0);
+      sctx.filter = "none";
+
+      finalCanvas = smoothCanvas;
+    }
+
+    // ===== Step 4: Export =====
+    const result = finalCanvas.toDataURL("image/jpeg", 0.7);
+    setOutput_img(result);
   };
+};
 
   const handleDownload = () => {
     if (!output_img) return;
@@ -96,6 +120,10 @@ function App() {
                 onValueChange={([newValue]) => setValue(newValue)}
                 className="mx-auto w-full max-w-xs"
               />
+              <div className="flex items-center space-x-2 mt-6">
+                <Switch id="smooth" checked={smooth} onCheckedChange={setSmooth} />
+                <Label htmlFor="smooth">Smooth?</Label>
+              </div>
               <Button onClick={handeleSubmit} className="mt-4">Curse it</Button>
             </div>
             <div className="mt-6 flex align-center justify-center gap-2.5">
